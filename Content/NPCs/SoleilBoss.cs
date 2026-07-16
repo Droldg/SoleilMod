@@ -1,15 +1,20 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Terraria;
 using Terraria.Audio;
-using Terraria.GameContent.ItemDropRules;
+using Terraria.GameContent;
 using Terraria.ID;
 using Terraria.ModLoader;
+using Soleil.Content.BossBars;
 using Soleil.Content.Projectiles;
 
 namespace Soleil.Content.NPCs
 {
+	[AutoloadBossHead]
 	public class SoleilBoss : ModNPC
 	{
+		public override string BossHeadTexture => "Soleil/Content/NPCs/SoleilBoss_Head_Boss";
+
 		private enum AttackState
 		{
 			Hover = 0,
@@ -32,13 +37,14 @@ namespace Soleil.Content.NPCs
 		{
 			Main.npcFrameCount[Type] = 1;
 			NPCID.Sets.MPAllowedEnemies[Type] = true;
+			NPCID.Sets.ShouldBeCountedAsBoss[Type] = true;
 			NPCID.Sets.BossBestiaryPriority.Add(Type);
 		}
 
 		public override void SetDefaults()
 		{
-			NPC.width = 82;
-			NPC.height = 82;
+			NPC.width = 124;
+			NPC.height = 124;
 			NPC.damage = 72;
 			NPC.defense = 32;
 			NPC.lifeMax = 34000;
@@ -53,6 +59,7 @@ namespace Soleil.Content.NPCs
 			NPC.boss = true;
 			NPC.npcSlots = 10f;
 			NPC.netAlways = true;
+			NPC.BossBar = ModContent.GetInstance<SoleilBossBar>();
 			Music = MusicID.Boss3;
 		}
 
@@ -60,6 +67,17 @@ namespace Soleil.Content.NPCs
 		{
 			NPC.lifeMax = (int)(NPC.lifeMax * 0.75f * balance * bossAdjustment);
 			NPC.damage = (int)(NPC.damage * 0.85f);
+		}
+
+		public override bool PreDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
+		{
+			Texture2D raysTexture = ModContent.Request<Texture2D>("Soleil/Content/NPCs/SoleilBoss_Rays").Value;
+			Texture2D faceTexture = TextureAssets.Npc[Type].Value;
+			Vector2 drawPosition = NPC.Center - screenPos;
+
+			Main.EntitySpriteDraw(raysTexture, drawPosition, null, Color.White, NPC.rotation, raysTexture.Size() * 0.5f, NPC.scale, SpriteEffects.None);
+			Main.EntitySpriteDraw(faceTexture, drawPosition, null, drawColor, NPC.rotation, faceTexture.Size() * 0.5f, NPC.scale, SpriteEffects.None);
+			return false;
 		}
 
 		public override void AI()
@@ -117,6 +135,12 @@ namespace Soleil.Content.NPCs
 			{
 				FireAimedProjectile(target, Counter % 2 == 0);
 				Counter++;
+			}
+
+			int rayRate = Phase3 ? 78 : Phase2 ? 92 : 110;
+			if (Timer % rayRate == 35)
+			{
+				FireRedRays();
 			}
 
 			if (Timer >= HoverDuration)
@@ -201,6 +225,26 @@ namespace Soleil.Content.NPCs
 			SoundEngine.PlaySound(SoundID.Item8, NPC.Center);
 		}
 
+		private void FireRedRays()
+		{
+			if (Main.netMode == NetmodeID.MultiplayerClient)
+			{
+				return;
+			}
+
+			const int rayCount = 8;
+			float speed = Phase3 ? 10.5f : Phase2 ? 9.5f : 8.5f;
+			for (int i = 0; i < rayCount; i++)
+			{
+				float angle = NPC.rotation + MathHelper.TwoPi * i / rayCount;
+				Vector2 direction = Vector2.UnitX.RotatedBy(angle);
+				Vector2 spawnPosition = NPC.Center + direction * 174f;
+				Projectile.NewProjectile(NPC.GetSource_FromAI(), spawnPosition, direction * speed, ModContent.ProjectileType<SoleilRedRay>(), Main.expertMode ? 18 : 24, 0f, Main.myPlayer);
+			}
+
+			SoundEngine.PlaySound(SoundID.Item33, NPC.Center);
+		}
+
 		private void FireSpiralVolley()
 		{
 			if (Main.netMode == NetmodeID.MultiplayerClient)
@@ -282,19 +326,9 @@ namespace Soleil.Content.NPCs
 			}
 		}
 
-		public override void ModifyNPCLoot(NPCLoot npcLoot)
+		public override void BossLoot(ref int potionType)
 		{
-			LeadingConditionRule normalMode = new LeadingConditionRule(new Conditions.NotExpert());
-			normalMode.OnSuccess(ItemDropRule.Common(ItemID.HallowedBar, 1, 15, 30));
-			normalMode.OnSuccess(ItemDropRule.Common(ItemID.SoulofMight, 1, 12, 20));
-			normalMode.OnSuccess(ItemDropRule.Common(ItemID.GreaterHealingPotion, 1, 5, 15));
-			npcLoot.Add(normalMode);
-
-			LeadingConditionRule expertMode = new LeadingConditionRule(new Conditions.IsExpert());
-			expertMode.OnSuccess(ItemDropRule.Common(ItemID.HallowedBar, 1, 20, 34));
-			expertMode.OnSuccess(ItemDropRule.Common(ItemID.SoulofMight, 1, 18, 28));
-			expertMode.OnSuccess(ItemDropRule.Common(ItemID.GreaterHealingPotion, 1, 5, 15));
-			npcLoot.Add(expertMode);
+			potionType = ItemID.GreaterHealingPotion;
 		}
 	}
 }
