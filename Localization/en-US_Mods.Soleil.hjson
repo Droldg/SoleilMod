@@ -1,0 +1,26 @@
+Mods: {
+	Soleil: {
+		NPCs: {
+			SoleilBoss: {
+				DisplayName: Soleil
+			}
+		}
+
+		Items: {
+			SoleilSigil: {
+				DisplayName: Soleil Sigil
+				Tooltip: Summons Soleil
+			}
+		}
+
+		Projectiles: {
+			SoleilGreenWave: {
+				DisplayName: Green Soleil Wave
+			}
+
+			SoleilOrangeWave: {
+				DisplayName: Orange Soleil Wave
+			}
+		}
+	}
+}

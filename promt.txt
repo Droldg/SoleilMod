@@ -1,0 +1,510 @@
+Du arbejder i et eksisterende tModLoader-modprojekt med navnet "Soleil".
+
+Modprojektets rodmappe er den mappe, der aktuelt er åbnet i VS Code. Projektet indeholder allerede blandt andet:
+
+- Soleil.cs
+- Soleil.csproj
+- build.txt
+- description.txt
+- description_workshop.txt
+- Localization/
+- Properties/
+
+Jeg vil have dig til at implementere en komplet og fungerende Terraria/tModLoader-bossmod.
+
+VIGTIGT:
+- Undersøg først den eksisterende projektstruktur, Soleil.csproj, build.txt og den tModLoader-version, som projektet bygger imod.
+- Brug den API, som faktisk er tilgængelig i projektets installerede tModLoader-version.
+- Du må ikke antage en ældre tModLoader-API, hvis projektet bruger en nyere version.
+- Koden skal kunne kompileres via tModLoaders "Build + Reload".
+- Ret selv namespaces, imports og API-kald, hvis den installerede version kræver det.
+- Brug projektets eksisterende namespace "Soleil".
+- Erstat ikke unødvendigt eksisterende projektfiler.
+- Opret de nødvendige mapper og filer automatisk.
+- Efter implementeringen skal du bygge projektet og rette alle compiler-fejl, indtil det bygger korrekt.
+- Forklar til sidst kort, hvilke filer du har oprettet eller ændret.
+
+==================================================
+MODDENS OVERORDNEDE IDÉ
+==================================================
+
+Modden skal tilføje en boss ved navn "Soleil".
+
+Bossen skal være en Terraria/pixel-art-udgave af billedet "wavy.png".
+
+Jeg lægger referencebilledet i projektets rodmappe med navnet:
+
+wavy.png
+
+Billedets grundlæggende design er:
+
+- En lilla/magenta central krop.
+- En grøn bølget eller flammeagtig del på venstre side.
+- En orange bølget eller flammeagtig del på højre side.
+- Originalbilledet kan have en rød baggrund, men den røde baggrund må ikke indgå i Terraria-spriten.
+- Bossens sprite skal have transparent baggrund.
+- Spriten skal ligne Terraria-pixel-art og ikke blot være et stort, glat nedskaleret billede.
+- Bevar den genkendelige ujævne og bølgede silhuet fra referencebilledet.
+- Tilføj en mørk pixel-outline, så bossen er tydelig mod forskellige Terraria-baggrunde.
+
+Hvis billedbehandling er mulig lokalt, må du bruge et lille Python-script med Pillow til at læse wavy.png og lave sprites. Scriptet må gerne:
+- Fjerne den røde baggrund.
+- Beskære omkring logoet.
+- Nedskalere med nearest-neighbor.
+- Reducere farvepaletten.
+- Tilføje transparent baggrund.
+- Tilføje en mørk pixel-outline.
+
+Hvis det ikke er muligt at skabe et ordentligt pixel-art-resultat automatisk, skal du stadig oprette fungerende placeholder-sprites med samme lilla, grønne og orange design. Fortæl tydeligt til sidst, hvis sprites bør redigeres manuelt.
+
+==================================================
+KRÆVET MAPPESTRUKTUR
+==================================================
+
+Brug en organiseret struktur i stil med:
+
+Soleil/
+├── Soleil.cs
+├── Content/
+│   ├── NPCs/
+│   │   ├── SoleilBoss.cs
+│   │   └── SoleilBoss.png
+│   ├── Items/
+│   │   ├── SoleilSigil.cs
+│   │   └── SoleilSigil.png
+│   └── Projectiles/
+│       ├── SoleilGreenWave.cs
+│       ├── SoleilGreenWave.png
+│       ├── SoleilOrangeWave.cs
+│       └── SoleilOrangeWave.png
+├── Common/
+│   └── Commands/
+│       └── SoleilCommand.cs
+└── Localization/
+    └── en-US_Mods.Soleil.hjson
+
+Du må justere strukturen, hvis projektets eksisterende tModLoader-version eller konventioner kræver det.
+
+==================================================
+1. BOSSEN: SOLEIL
+==================================================
+
+Opret en boss-NPC med det interne navn:
+
+SoleilBoss
+
+Det viste navn i spillet skal være:
+
+Soleil
+
+Bossen skal:
+
+- Registreres som en rigtig boss.
+- Vises med boss health bar.
+- Have custom AI og ikke blot kopiere en vanilla aiStyle.
+- Flyve.
+- Ignorere tyngdekraft.
+- Kunne bevæge sig gennem blocks.
+- Være immun over for lava.
+- Have knockback resistance på 0.
+- Automatisk finde den nærmeste aktive spiller.
+- Despawne korrekt, hvis alle spillere er døde eller for langt væk.
+- Synkronisere korrekt i multiplayer.
+- Kun oprette projektiler og centrale AI-hændelser på serveren eller den autoritative side.
+- Ikke kunne summoneres flere gange samtidig.
+
+Bossens styrke skal omtrent svare til en mekanisk boss.
+
+Brug cirka disse normal-mode-basetal, men juster dem gerne efter behov:
+
+- Maksimalt liv: cirka 30.000 til 38.000.
+- Contact damage: cirka 65 til 80.
+- Defense: cirka 28 til 34.
+- Boss-værdi: cirka 12 til 18 gold.
+- Boss potion drop: Greater Healing Potion.
+
+Implementer korrekt scaling til Expert og Master Mode ved hjælp af relevante tModLoader-hooks.
+
+Bossen må gerne få:
+
+- Mere liv i Expert og Master.
+- Højere skade eller projektilfrekvens.
+- Hurtigere angreb.
+- En mere aggressiv sidste fase.
+
+==================================================
+2. BOSSENS AI OG FASER
+==================================================
+
+Lav en forudsigelig, men udfordrende boss-AI med mindst tre forskellige angreb.
+
+AI'en skal være en state machine. Brug NPC.ai-felterne eller en tilsvarende multiplayer-sikker metode.
+
+Bossen skal som minimum have følgende states:
+
+STATE 1: HOVER OG PROJEKTILER
+
+- Bossen flyver til en position cirka 180-250 pixels over spilleren.
+- Den bevæger sig jævnt og ikke med øjeblikkelig teleportation.
+- Den affyrer skiftevis grønne og orange projektiler mod spilleren.
+- Projektilerne må ikke være unfair hurtige.
+- Der skal være en tydelig cooldown.
+- Bossen må gerne bevæge sig fra side til side, mens den skyder.
+
+STATE 2: DASH-ANGREB
+
+- Bossen stopper eller sænker farten kort.
+- Den signalerer visuelt, at et dash er på vej.
+- Den dasher derefter mod spillerens forventede position.
+- Udfør cirka 2-4 dashes afhængigt af difficulty og bossens resterende liv.
+- Der skal være en kort pause mellem hvert dash.
+- Efter dash-serien går bossen tilbage til hover eller næste state.
+
+STATE 3: BØLGE- ELLER SPIRALANGREB
+
+- Bossen bevæger sig til et passende punkt nær spilleren.
+- Den affyrer grønne og orange projektiler i et mønster.
+- Mønstret kan være en cirkel, halvcirkel, vifte eller roterende spiral.
+- Der skal være sikre huller, så angrebet kan undgås.
+- Projektilerne skal have en rimelig levetid og må ikke blive liggende permanent.
+
+FASE 2:
+
+Når bossen kommer under cirka 50 % liv:
+
+- Bevægelseshastigheden øges moderat.
+- Cooldowns reduceres en smule.
+- Dash-serien får eventuelt ét ekstra dash.
+- Projektilmønstre bliver lidt tættere.
+- Bossen må gerne udsende grønne, orange og lilla dust-effekter.
+- Angrebene skal fortsat være læsbare og mulige at undgå.
+
+FASE 3 / ENRAGE:
+
+Når bossen kommer under cirka 20-25 % liv:
+
+- Bossen bliver tydeligt mere aggressiv.
+- Den må ikke blive urimelig eller umulig.
+- Dash-angreb bliver hurtigere.
+- Projektiler må affyres lidt oftere.
+- Tilføj ekstra visuelle effekter.
+- Undgå at fordoble al skade voldsomt.
+
+Bossens rotation må gerne følge dens horisontale bevægelse en smule, men logoet skal stadig være genkendeligt.
+
+==================================================
+3. CUSTOM PROJEKTILER
+==================================================
+
+Lav mindst to custom hostile projectiles:
+
+SoleilGreenWave
+
+- Grøn sprite.
+- Bølget eller flammeagtigt design.
+- Hostile.
+- Ikke friendly.
+- Rimelig hitbox.
+- Passende trail eller dust-effekt.
+- Bevægelsen må gerne have en let sinusbevægelse.
+
+SoleilOrangeWave
+
+- Orange sprite.
+- Hostile.
+- Ikke friendly.
+- Rimelig hitbox.
+- Passende trail eller dust-effekt.
+- Må gerne accelerere let eller dreje en smule mod spilleren i starten.
+- Må ikke være ekstremt homing.
+
+Krav:
+
+- Projektiler skal fungere korrekt i multiplayer.
+- De skal despawne efter en fast levetid.
+- De må ikke skabe uendeligt mange child projectiles.
+- Projektilskade skal være passende for en mekanisk boss.
+- Tag højde for, at hostile projectile damage kan opføre sig forskelligt i forskellige difficulties.
+- Brug transparent baggrund på sprites.
+
+==================================================
+4. SUMMON-ITEM
+==================================================
+
+Opret et item med det interne navn:
+
+SoleilSigil
+
+Det viste navn skal være:
+
+Soleil Sigil
+
+Tooltip skal forklare, at det hidkalder Soleil.
+
+Itemet skal:
+
+- Have en 32x32 pixel-art sprite.
+- Bruge samme lilla, grønne og orange logo som bossen.
+- Have transparent baggrund.
+- Være genkendeligt som en mindre item-version af bossens logo.
+- Bruge HoldUp-use style eller en tilsvarende passende summon-animation.
+- Afspille en passende lyd.
+- Ikke være forbrugeligt.
+- Kun kunne bruges, hvis Soleil ikke allerede eksisterer.
+- Summone bossen på den spiller, som bruger itemet.
+- Virke korrekt i singleplayer og multiplayer.
+- Have en passende rarity omkring Light Red eller Pink.
+- Have en sell value, men ikke være nødvendigt at sælge dyrt.
+- Have ResearchUnlockCount sat korrekt.
+
+Der behøver ikke være en crafting recipe i første version. Itemet skal primært gives via kommandoen.
+
+==================================================
+5. KOMMANDOEN /soleil
+==================================================
+
+Opret en tModLoader-chatkommando:
+
+/soleil
+
+Kommandoen skal:
+
+- Give spilleren ét Soleil Sigil.
+- Kun give itemet til spilleren, der skrev kommandoen.
+- Virke i singleplayer.
+- Virke korrekt på en multiplayer-server.
+- Bruge QuickSpawnItem eller en tilsvarende korrekt metode.
+- Bruge en passende EntitySource.
+- Skrive en kort bekræftelse i chatten, eksempelvis:
+  "Du modtog et Soleil Sigil."
+- Ikke direkte summone bossen.
+- Ikke give itemet til alle spillere.
+- Ikke skabe itemet som et usikkert world drop, hvis det kan gives direkte til inventory.
+
+Kommandoens metadata:
+
+- Command: soleil
+- Usage: /soleil
+- Description: Giver dig et Soleil Sigil.
+
+==================================================
+6. BOSS DROPS
+==================================================
+
+Implementer simple, midlertidige boss drops:
+
+Normal mode:
+
+- Hallowed Bars, eksempelvis 15-30.
+- En passende mængde Souls, eksempelvis Souls of Might eller en blanding.
+- Greater Healing Potions via boss potion-systemet.
+
+Expert Mode:
+
+- Brug en boss bag, hvis det er praktisk at implementere korrekt.
+- Hvis en boss bag kræver for meget ekstra arbejde, kan du i første version bruge korrekt difficulty-betinget loot direkte.
+- Undgå at give både normal drops og expert-only drops dobbelt ved en fejl.
+
+Master Mode:
+
+- Tilføj eventuelt en lille vanity- eller relic-placeholder, men kun hvis det kan implementeres rent og uden at skabe mange irrelevante filer.
+- Bossens kernefunktioner er vigtigere end ekstra loot.
+
+==================================================
+7. VISUELLE EFFEKTER
+==================================================
+
+Tilføj simple visuelle effekter uden at overdrive:
+
+- Lilla/magenta dust omkring den centrale del.
+- Grøn dust ved grønne angreb.
+- Orange dust ved orange angreb.
+- Dust ved dash-opladning.
+- En tydelig death-effekt med de tre farver.
+- Eventuelt en svag glow-effekt, hvis den kan implementeres enkelt og stabilt.
+
+Undgå:
+
+- Meget kraftig screen shake.
+- Konstant ekstrem lysstyrke.
+- Effekter, der skjuler projektilernes position.
+- Effekter, som giver store performance-problemer.
+
+==================================================
+8. LYD OG MUSIK
+==================================================
+
+Brug i første omgang passende vanilla Terraria-lyde.
+
+Eksempler:
+
+- En passende summon-lyd på Soleil Sigil.
+- En lyd ved projectile attacks.
+- En tydelig dash-opladningslyd.
+- En passende boss hit sound.
+- En passende boss death sound.
+
+Brug en eksisterende vanilla boss music track. Der skal ikke tilføjes copyrighted custom musik.
+
+==================================================
+9. LOKALISERING
+==================================================
+
+Brug tModLoaders lokaliseringssystem frem for unødvendigt hardcodede display names.
+
+Opret eller opdater relevante HJSON-localization entries for:
+
+- SoleilBoss
+- SoleilSigil
+- SoleilGreenWave
+- SoleilOrangeWave
+- Kommandoens beskrivelse, hvis API'en understøtter det praktisk
+
+Primært sprog må være engelsk for interne localization-filer, men kommandoens chatbekræftelse må gerne være dansk.
+
+Eksempler på viste tekster:
+
+Boss:
+Soleil
+
+Item:
+Soleil Sigil
+
+Tooltip:
+Summons Soleil
+
+==================================================
+10. SPRITES
+==================================================
+
+Generer eller opret følgende PNG-filer:
+
+Content/NPCs/SoleilBoss.png
+
+- Omtrent 96x96 pixels.
+- Transparent baggrund.
+- Lilla/magenta central krop.
+- Grøn venstre side.
+- Orange højre side.
+- Mørk pixel-outline.
+- Genkendelig ujævn/bølget form fra wavy.png.
+- Ingen rød firkantet baggrund.
+
+Content/Items/SoleilSigil.png
+
+- 32x32 pixels.
+- Transparent baggrund.
+- En forenklet item-version af samme logo.
+- Må ikke blot være et 32x32 rødt kvadrat.
+
+Content/Projectiles/SoleilGreenWave.png
+
+- Lille grøn bølge/flamme.
+- Omtrent 18x18 eller 24x24 pixels.
+- Transparent baggrund.
+
+Content/Projectiles/SoleilOrangeWave.png
+
+- Lille orange bølge/flamme.
+- Omtrent 18x18 eller 24x24 pixels.
+- Transparent baggrund.
+
+Sørg for, at sprite-filernes placering og navne præcist matcher de tilhørende ModNPC-, ModItem- og ModProjectile-klasser.
+
+Hvis projektets asset pipeline kræver særlige PNG-egenskaber, skal du tage højde for det.
+
+==================================================
+11. HITBOXES OG COLLISION
+==================================================
+
+Bossens sprite kan være cirka 96x96, men NPC-hitboxen skal justeres, så den føles rimelig.
+
+- Hitboxen skal ikke omfatte store transparente områder.
+- Bossen skal ikke skade spilleren fra åbenlyst tomme områder.
+- Projektil-hitboxes skal være lidt mindre end deres synlige sprite, hvis det føles mere fair.
+- Undgå unfair collision under dash-angreb.
+
+==================================================
+12. MULTIPLAYER-KRAV
+==================================================
+
+Dette er vigtigt.
+
+- Bossen skal fungere på en dedikeret tModLoader-server.
+- NPC-spawning må ikke ske flere gange på grund af både client og server.
+- Projectile.NewProjectile skal udføres autoritativt.
+- State changes skal synkroniseres med NPC.netUpdate, når det er nødvendigt.
+- Random values, der påvirker AI-state eller projektilmønstre, skal vælges på serveren.
+- /soleil skal give itemet til den korrekte spiller.
+- Summon-itemet skal bruge en multiplayer-sikker boss spawn-metode.
+- Ingen client-only kode må køres på en dedicated server.
+- Undgå grafiske API-kald i server-side AI.
+
+==================================================
+13. KODEKVALITET
+==================================================
+
+Koden skal:
+
+- Bruge tydelige class names.
+- Bruge constants eller enums til AI states frem for uforklarede magic numbers.
+- Have korte kommentarer ved vigtig AI-logik.
+- Undgå unødvendig duplication.
+- Undgå meget store methods, hvis de naturligt kan opdeles.
+- Have korrekt namespace.
+- Have nødvendige using-statements.
+- Ikke indeholde tomme dummy-klasser, medmindre de er nødvendige.
+- Ikke indeholde ubrugte imports.
+- Ikke bruge obsolete API-kald, hvis nyere korrekte alternativer findes.
+- Ikke ændre projektets target framework uden en konkret grund.
+- Ikke tilføje eksterne NuGet-pakker, medmindre det er absolut nødvendigt.
+- Pillow må kun bruges som udviklingsværktøj til PNG-generering og må ikke være en runtime-afhængighed for modden.
+
+==================================================
+14. BUILD OG TEST
+==================================================
+
+Når implementeringen er færdig:
+
+1. Find den korrekte måde at bygge dette tModLoader-projekt på.
+2. Kør build.
+3. Ret alle C# compiler errors.
+4. Ret manglende assets.
+5. Ret localization-fejl.
+6. Ret namespace- eller content path-fejl.
+7. Gentag, indtil projektet bygger uden errors.
+
+Hvis det ikke er muligt at udføre tModLoaders fulde build fra terminalen, skal du som minimum:
+
+- Køre dotnet build, hvis projektet understøtter det.
+- Kontrollere alle filer for åbenlyse compiler-fejl.
+- Forklare præcist, hvordan jeg udfører "Build + Reload" i tModLoader.
+- Ikke påstå, at modden er testet i spillet, hvis det ikke faktisk er gjort.
+
+==================================================
+15. SLUTRAPPORT
+==================================================
+
+Når du er færdig, skal du vise:
+
+1. En kort liste over oprettede filer.
+2. En kort liste over ændrede filer.
+3. Resultatet af build.
+4. Eventuelle begrænsninger.
+5. Om sprites blev genereret fra wavy.png eller er placeholders.
+6. En kort testprocedure:
+
+- Start tModLoader.
+- Gå til Workshop.
+- Åbn Develop Mods.
+- Kør Build + Reload.
+- Aktivér Soleil.
+- Start en verden.
+- Skriv /soleil.
+- Kontroller at Soleil Sigil gives til spilleren.
+- Brug itemet.
+- Kontroller at bossen spawner.
+- Kontroller at bossen skifter mellem hover, dash og projectile-angreb.
+- Kontroller at en anden Soleil ikke kan summoneres samtidig.
+
+Start nu med at undersøge det eksisterende projekt og implementer hele løsningen. Stop ikke efter kun at beskrive koden. Opret og rediger de faktiske filer i projektet.
