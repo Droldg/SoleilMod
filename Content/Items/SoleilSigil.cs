@@ -23,8 +23,8 @@ namespace Soleil.Content.Items
 			Item.useAnimation = 30;
 			Item.useStyle = ItemUseStyleID.HoldUp;
 			Item.rare = ItemRarityID.Pink;
-			Item.value = Item.sellPrice(gold: 2);
-			Item.UseSound = SoundID.Item44;
+			Item.value = Item.sellPrice(silver: 50);
+			Item.UseSound = SoundID.Item41;
 			Item.consumable = false;
 		}
 
